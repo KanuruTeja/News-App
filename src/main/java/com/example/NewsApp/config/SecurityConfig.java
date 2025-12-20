@@ -1,9 +1,9 @@
 package com.example.NewsApp.config;
 
-
 import com.example.NewsApp.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,6 +11,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -24,9 +25,16 @@ public class SecurityConfig {
             JwtAuthenticationFilter jwtAuthenticationFilter)
             throws Exception {
 
-        http.csrf(csrf -> csrf.disable())
+        http
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
+
+
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/auth/reporter/**").hasAnyRole("ADMIN", "REPORTER")
+                        .requestMatchers("/api/auth/user/**").hasAnyRole("USER", "ADMIN")
+
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

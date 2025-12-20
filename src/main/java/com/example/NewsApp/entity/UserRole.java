@@ -18,5 +18,6 @@ public class UserRole {
 
     @ManyToOne
     private Role role;
+
 }
 

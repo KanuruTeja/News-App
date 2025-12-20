@@ -71,8 +71,16 @@ public class AuthService {
         if (!encoder.matches(req.getPassword(), user.getPassword()))
             throw new ApiException("Invalid credentials");
 
-        return jwtProvider.generateToken(user.getEmail());
+        Role role = userRoleRepo.findByUser(user)
+                .orElseThrow(() -> new ApiException("Role not found"))
+                .getRole();
+
+        return jwtProvider.generateToken(
+                user.getEmail(),
+                role.getName()   // ADMIN / USER / REPORTER
+        );
     }
+
 
     // ================= SEND OTP =================
     public void sendOtp(String email) {
