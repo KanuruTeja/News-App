@@ -19,6 +19,7 @@ public class Location {
     private String state;
     private Double latitude;
     private Double longitude;
+    private String zipCode;
 
     @OneToOne
     private User user;

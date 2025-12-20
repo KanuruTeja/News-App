@@ -1,13 +1,11 @@
 package com.example.NewsApp.service;
 
-import com.example.NewsApp.dto.LoginRequest;
-import com.example.NewsApp.dto.RegisterRequest;
-import com.example.NewsApp.dto.ResetPasswordRequest;
-import com.example.NewsApp.dto.VerifyOtpRequest;
+import com.example.NewsApp.dto.*;
 import com.example.NewsApp.entity.*;
 import com.example.NewsApp.exception.ApiException;
 import com.example.NewsApp.repository.*;
 import com.example.NewsApp.security.JwtTokenProvider;
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -34,20 +32,30 @@ public class AuthService {
     // ================= REGISTER =================
     public User register(RegisterRequest req) {
 
-        if (userRepo.existsByEmail(req.getEmail()))
+        if (userRepo.existsByEmail(req.getEmail())) {
             throw new ApiException("Email already exists");
+        }
 
         User user = User.builder()
                 .name(req.getName())
                 .email(req.getEmail())
                 .password(encoder.encode(req.getPassword()))
+                .mobileNumber(req.getMobileNumber())   // ✅ NEW FIELD
                 .enabled(true)
                 .build();
+
         userRepo.save(user);
 
         Role role = roleRepo.findById(req.getRoleId())
                 .orElseThrow(() -> new ApiException("Invalid role"));
-        userRoleRepo.save(new UserRole(null, user, role));
+
+        // ✅ FIXED: Builder instead of constructor
+        userRoleRepo.save(
+                UserRole.builder()
+                        .user(user)
+                        .role(role)
+                        .build()
+        );
 
         locationRepo.save(
                 Location.builder()
@@ -55,6 +63,7 @@ public class AuthService {
                         .state(req.getState())
                         .latitude(req.getLatitude())
                         .longitude(req.getLongitude())
+                        .zipCode(req.getZipCode())   // ✅ NEW FIELD
                         .user(user)
                         .build()
         );
@@ -68,8 +77,9 @@ public class AuthService {
         User user = userRepo.findByEmail(req.getEmail())
                 .orElseThrow(() -> new ApiException("Invalid credentials"));
 
-        if (!encoder.matches(req.getPassword(), user.getPassword()))
+        if (!encoder.matches(req.getPassword(), user.getPassword())) {
             throw new ApiException("Invalid credentials");
+        }
 
         Role role = userRoleRepo.findByUser(user)
                 .orElseThrow(() -> new ApiException("Role not found"))
@@ -77,10 +87,9 @@ public class AuthService {
 
         return jwtProvider.generateToken(
                 user.getEmail(),
-                role.getName()   // ADMIN / USER / REPORTER
+                role.getName() // ADMIN / USER / REPORTER
         );
     }
-
 
     // ================= SEND OTP =================
     public void sendOtp(String email) {
@@ -98,7 +107,7 @@ public class AuthService {
         resetOtp.setExpiry(LocalDateTime.now().plusMinutes(5));
         resetOtp.setVerified(false);
 
-        otpRepo.save(resetOtp); // INSERT or UPDATE safely
+        otpRepo.save(resetOtp);
 
         emailService.send(
                 email,
@@ -116,11 +125,13 @@ public class AuthService {
         PasswordResetOtp otp = otpRepo.findByUser(user)
                 .orElseThrow(() -> new ApiException("OTP not found"));
 
-        if (otp.getExpiry().isBefore(LocalDateTime.now()))
+        if (otp.getExpiry().isBefore(LocalDateTime.now())) {
             throw new ApiException("OTP expired");
+        }
 
-        if (!otp.getOtp().equals(req.getOtp()))
+        if (!otp.getOtp().equals(req.getOtp())) {
             throw new ApiException("Invalid OTP");
+        }
 
         otp.setVerified(true);
         otpRepo.save(otp);
@@ -135,12 +146,13 @@ public class AuthService {
         PasswordResetOtp otp = otpRepo.findByUser(user)
                 .orElseThrow(() -> new ApiException("OTP not found"));
 
-        if (!otp.isVerified())
+        if (!otp.isVerified()) {
             throw new ApiException("OTP not verified");
+        }
 
         user.setPassword(encoder.encode(req.getNewPassword()));
         userRepo.save(user);
 
-        otpRepo.delete(otp); // cleanup after success
+        otpRepo.delete(otp);
     }
 }

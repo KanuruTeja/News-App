@@ -89,7 +89,7 @@ public class AuthController {
     }
 
     @GetMapping("/repoter/dashboard")
-    @PreAuthorize("hasRole('REPOTER')")
+    @PreAuthorize("hasRole('REPOTER, ADMIN')")
     public String userDashboard() {
         return "REPOTER ACCESS ONLY";
     }

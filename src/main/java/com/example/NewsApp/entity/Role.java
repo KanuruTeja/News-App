@@ -12,7 +12,7 @@ import lombok.*;
 public class Role {
 
     @Id
-    private Integer id; // 1=ADMIN, 2=REPORTER, 3=USER
+    private Long id; // 1=ADMIN, 2=REPORTER, 3=USER
 
     @Column(unique = true, nullable = false)
     private String name;

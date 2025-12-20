@@ -14,4 +14,6 @@ public class RegisterRequest {
     private String state;
     private Double latitude;
     private Double longitude;
+    private String zipCode;
+    private String mobileNumber;
 }
