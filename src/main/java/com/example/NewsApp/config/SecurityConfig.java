@@ -1,6 +1,9 @@
 package com.example.NewsApp.config;
 
 import com.example.NewsApp.security.JwtAuthenticationFilter;
+import com.example.NewsApp.security.OAuth2LoginSuccessHandler;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -12,7 +15,11 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -20,23 +27,45 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            JwtAuthenticationFilter jwtAuthenticationFilter)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
 
         http
                 .csrf(csrf -> csrf.disable())
+
+                // 🔥 ADD THIS BLOCK (ONLY FIX)
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write("""
+                                {
+                                  "message": "Unauthorized or invalid token",
+                                  "error": true,
+                                  "status": 401
+                                }
+                            """);
+                        })
+                )
+
                 .authorizeHttpRequests(auth -> auth
-
-
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/auth/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/auth/reporter/**").hasAnyRole("ADMIN", "REPORTER")
-                        .requestMatchers("/api/auth/user/**").hasAnyRole("USER", "ADMIN")
-
+                        .requestMatchers("/api/auth/reporter/**")
+                        .hasAnyRole("ADMIN", "REPORTER")
+                        .requestMatchers("/api/auth/user/**")
+                        .hasAnyRole("USER", "ADMIN")
+                        .requestMatchers("/api/admin/news/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").permitAll()
                         .anyRequest().authenticated()
                 )
+
+                // ✅ GOOGLE OAUTH (UNCHANGED)
+                .oauth2Login(oauth ->
+                        oauth.successHandler(oAuth2LoginSuccessHandler)
+                )
+
+                // ✅ JWT FILTER (UNCHANGED)
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class

@@ -22,5 +22,6 @@ public class Location {
     private String zipCode;
 
     @OneToOne
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 }

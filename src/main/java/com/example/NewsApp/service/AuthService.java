@@ -5,8 +5,8 @@ import com.example.NewsApp.entity.*;
 import com.example.NewsApp.exception.ApiException;
 import com.example.NewsApp.repository.*;
 import com.example.NewsApp.security.JwtTokenProvider;
-import lombok.Builder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +17,6 @@ import java.util.Random;
 @Service
 @RequiredArgsConstructor
 @Transactional
-
 public class AuthService {
 
     private final UserRepository userRepo;
@@ -33,29 +32,33 @@ public class AuthService {
     public User register(RegisterRequest req) {
 
         if (userRepo.existsByEmail(req.getEmail())) {
-            throw new ApiException("Email already exists");
+            throw new ApiException("Email already exists", HttpStatus.BAD_REQUEST);
         }
 
         User user = User.builder()
                 .name(req.getName())
                 .email(req.getEmail())
                 .password(encoder.encode(req.getPassword()))
-                .mobileNumber(req.getMobileNumber())   // ✅ NEW FIELD
+                .mobileNumber(req.getMobileNumber())
                 .enabled(true)
+                .authProvider(AuthProvider.LOCAL)
                 .build();
 
         userRepo.save(user);
 
         Role role = roleRepo.findById(req.getRoleId())
-                .orElseThrow(() -> new ApiException("Invalid role"));
+                .orElseThrow(() ->
+                        new ApiException("Invalid role", HttpStatus.BAD_REQUEST)
+                );
 
-        // ✅ FIXED: Builder instead of constructor
-        userRoleRepo.save(
-                UserRole.builder()
-                        .user(user)
-                        .role(role)
-                        .build()
-        );
+        UserRole userRole = UserRole.builder()
+                .id(new UserRoleId(user.getId(), role.getId()))
+                .user(user)
+                .role(role)
+                .build();
+
+        userRoleRepo.save(userRole);
+
 
         locationRepo.save(
                 Location.builder()
@@ -63,7 +66,7 @@ public class AuthService {
                         .state(req.getState())
                         .latitude(req.getLatitude())
                         .longitude(req.getLongitude())
-                        .zipCode(req.getZipCode())   // ✅ NEW FIELD
+                        .zipCode(req.getZipCode())
                         .user(user)
                         .build()
         );
@@ -75,19 +78,23 @@ public class AuthService {
     public String login(LoginRequest req) {
 
         User user = userRepo.findByEmail(req.getEmail())
-                .orElseThrow(() -> new ApiException("Invalid credentials"));
+                .orElseThrow(() ->
+                        new ApiException("Invalid credentials", HttpStatus.UNAUTHORIZED)
+                );
 
         if (!encoder.matches(req.getPassword(), user.getPassword())) {
-            throw new ApiException("Invalid credentials");
+            throw new ApiException("Invalid credentials", HttpStatus.UNAUTHORIZED);
         }
 
         Role role = userRoleRepo.findByUser(user)
-                .orElseThrow(() -> new ApiException("Role not found"))
+                .orElseThrow(() ->
+                        new ApiException("Role not found", HttpStatus.FORBIDDEN)
+                )
                 .getRole();
 
         return jwtProvider.generateToken(
                 user.getEmail(),
-                role.getName() // ADMIN / USER / REPORTER
+                role.getName()
         );
     }
 
@@ -95,9 +102,11 @@ public class AuthService {
     public void sendOtp(String email) {
 
         User user = userRepo.findByEmail(email)
-                .orElseThrow(() -> new ApiException("User not found"));
+                .orElseThrow(() ->
+                        new ApiException("User not found", HttpStatus.NOT_FOUND)
+                );
 
-        String otp = String.valueOf(100000 + new Random().nextInt(900000));
+        String otp = String.valueOf(1000 + new Random().nextInt(9000));
 
         PasswordResetOtp resetOtp =
                 otpRepo.findByUser(user).orElse(new PasswordResetOtp());
@@ -120,17 +129,21 @@ public class AuthService {
     public void verifyOtp(VerifyOtpRequest req) {
 
         User user = userRepo.findByEmail(req.getEmail())
-                .orElseThrow(() -> new ApiException("User not found"));
+                .orElseThrow(() ->
+                        new ApiException("User not found", HttpStatus.NOT_FOUND)
+                );
 
         PasswordResetOtp otp = otpRepo.findByUser(user)
-                .orElseThrow(() -> new ApiException("OTP not found"));
+                .orElseThrow(() ->
+                        new ApiException("OTP not found", HttpStatus.NOT_FOUND)
+                );
 
         if (otp.getExpiry().isBefore(LocalDateTime.now())) {
-            throw new ApiException("OTP expired");
+            throw new ApiException("OTP expired", HttpStatus.BAD_REQUEST);
         }
 
         if (!otp.getOtp().equals(req.getOtp())) {
-            throw new ApiException("Invalid OTP");
+            throw new ApiException("Invalid OTP", HttpStatus.BAD_REQUEST);
         }
 
         otp.setVerified(true);
@@ -141,13 +154,17 @@ public class AuthService {
     public void resetPassword(ResetPasswordRequest req) {
 
         User user = userRepo.findByEmail(req.getEmail())
-                .orElseThrow(() -> new ApiException("User not found"));
+                .orElseThrow(() ->
+                        new ApiException("User not found", HttpStatus.NOT_FOUND)
+                );
 
         PasswordResetOtp otp = otpRepo.findByUser(user)
-                .orElseThrow(() -> new ApiException("OTP not found"));
+                .orElseThrow(() ->
+                        new ApiException("OTP not found", HttpStatus.NOT_FOUND)
+                );
 
         if (!otp.isVerified()) {
-            throw new ApiException("OTP not verified");
+            throw new ApiException("OTP not verified", HttpStatus.BAD_REQUEST);
         }
 
         user.setPassword(encoder.encode(req.getNewPassword()));
@@ -155,4 +172,62 @@ public class AuthService {
 
         otpRepo.delete(otp);
     }
+
+    @Transactional
+    public void deleteUser(Long userId) {
+
+        User user = userRepo.findById(userId)
+                .orElseThrow(() ->
+                        new ApiException("User not found", HttpStatus.NOT_FOUND)
+                );
+
+        // DELETE CHILD TABLES FIRST
+        otpRepo.deleteByUser(user);        // password_reset_otp
+        locationRepo.deleteByUser(user);   // locations
+        userRoleRepo.deleteByUser(user);   // user_roles
+
+        //  THEN DELETE USER
+        userRepo.delete(user);
+    }
+
+
+    ///////////////OAuth///////////////
+    public void completeProfile(String email, CompleteProfileRequest req) {
+
+        User user = userRepo.findByEmail(email)
+                .orElseThrow(() ->
+                        new ApiException("User not found", HttpStatus.NOT_FOUND));
+
+        if (user.isProfileCompleted()) {
+            throw new ApiException("Profile already completed", HttpStatus.BAD_REQUEST);
+        }
+
+        Role role = roleRepo.findById(req.getRoleId().intValue())
+                .orElseThrow(() ->
+                        new ApiException("Invalid role", HttpStatus.BAD_REQUEST));
+
+        user.setMobileNumber(req.getMobileNumber());
+        user.setProfileCompleted(true);
+        userRepo.save(user);
+
+        userRoleRepo.save(
+                UserRole.builder()
+                        .id(new UserRoleId(user.getId(), role.getId()))
+                        .user(user)
+                        .role(role)
+                        .build()
+        );
+
+        locationRepo.save(
+                Location.builder()
+                        .city(req.getCity())
+                        .state(req.getState())
+                        .zipCode(req.getZipCode())
+                        .latitude(req.getLatitude())
+                        .longitude(req.getLongitude())
+                        .user(user)
+                        .build()
+        );
+    }
+
 }

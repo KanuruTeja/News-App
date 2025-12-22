@@ -6,21 +6,22 @@ import lombok.*;
 
 @Entity
 @Table(name = "user_roles")
-@Getter
-@Setter
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@IdClass(UserRoleId.class)
 public class UserRole {
 
-    @Id
+    @EmbeddedId
+    private UserRoleId id;
+
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @MapsId("userId")
+    @JoinColumn(name = "user_id")
     private User user;
 
-    @Id
     @ManyToOne
-    @JoinColumn(name = "role_id", nullable = false)
+    @MapsId("roleId")
+    @JoinColumn(name = "role_id")
     private Role role;
 }

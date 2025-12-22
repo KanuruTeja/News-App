@@ -1,18 +1,18 @@
 package com.example.NewsApp.entity;
 
 
+import jakarta.persistence.Embeddable;
+import java.io.Serializable;
 import lombok.*;
 
-import java.io.Serializable;
-
-@Getter
-@Setter
+@Embeddable
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode
 public class UserRoleId implements Serializable {
 
-    private Long user;
-    private Long role;
+    private Long userId;
+    private Long roleId;
 }
+
 

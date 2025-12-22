@@ -10,9 +10,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiResponse<?>> handle(ApiException ex) {
-        return ResponseEntity.badRequest().body(
-                new ApiResponse<>(ex.getMessage(), true, 400, null)
-        );
+
+        int statusCode = ex.getStatus().value(); 
+
+        return ResponseEntity
+                .status(ex.getStatus())
+                .body(new ApiResponse<>(
+                        ex.getMessage(),
+                        statusCode
+                ));
     }
 }
+
 
