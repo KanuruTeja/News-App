@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-@JsonInclude(JsonInclude.Include.NON_NULL) // hides null fields
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ApiResponse<T> {
 
     private String message;
@@ -14,7 +14,7 @@ public class ApiResponse<T> {
     private Integer code;
     private T data;
 
-    // ✅ SUCCESS RESPONSE
+    //  for SUCCESS RESPONSE
     public ApiResponse(String message, T data) {
         this.message = message;
         this.error = false;
@@ -22,7 +22,7 @@ public class ApiResponse<T> {
         this.code = null;
     }
 
-    // ✅ ERROR RESPONSE
+    //  for ERROR RESPONSE
     public ApiResponse(String message, int code) {
         this.message = message;
         this.error = true;
@@ -30,7 +30,7 @@ public class ApiResponse<T> {
         this.data = null;
     }
 
-    // ✅ INTERNAL / FLEXIBLE (used by controller if needed)
+    // INTERNAL
     public ApiResponse(String message, boolean error, Integer code, T data) {
         this.message = message;
         this.error = error;

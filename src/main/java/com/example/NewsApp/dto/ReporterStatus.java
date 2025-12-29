@@ -1,8 +1,8 @@
-package com.example.NewsApp.dto;
-
-
-public enum ReporterStatus {
-    PENDING,
-    APPROVED,
-    REJECTED
-}
+//package com.example.NewsApp.dto;
+//
+////comment
+//public enum ReporterStatus {
+//    PENDING,
+//    APPROVED,
+//    REJECTED
+//}

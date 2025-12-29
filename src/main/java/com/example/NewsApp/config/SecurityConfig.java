@@ -33,7 +33,6 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
 
-                // 🔥 ADD THIS BLOCK (ONLY FIX)
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -55,17 +54,19 @@ public class SecurityConfig {
                         .hasAnyRole("ADMIN", "REPORTER")
                         .requestMatchers("/api/auth/user/**")
                         .hasAnyRole("USER", "ADMIN")
-                        .requestMatchers("/api/admin/news/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/news/**").permitAll()
                         .requestMatchers("/api/admin/**").permitAll()
+                        .requestMatchers("api/users/**").permitAll()
+                        .requestMatchers("/api/tickets/**").permitAll()
                         .anyRequest().authenticated()
                 )
 
-                // ✅ GOOGLE OAUTH (UNCHANGED)
+                //  GOOGLE OAUTH
                 .oauth2Login(oauth ->
                         oauth.successHandler(oAuth2LoginSuccessHandler)
                 )
 
-                // ✅ JWT FILTER (UNCHANGED)
+                //  JWT FILTER
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class

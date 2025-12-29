@@ -4,6 +4,7 @@ public enum CategoryType {
     BUSINESS,
     POLITICS,
     EDUCATION,
-    SPORTS
+    SPORTS,
+    BREAKING
 }
 

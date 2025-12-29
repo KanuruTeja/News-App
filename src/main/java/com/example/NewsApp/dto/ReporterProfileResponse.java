@@ -1,23 +1,27 @@
 package com.example.NewsApp.dto;
 
+
+
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
-public class RegisterRequest {
+@Builder
+public class ReporterProfileResponse {
+
+    private Long userId;
     private String name;
     private String email;
-    private String password;
-    private Integer roleId;
     private String city;
     private String state;
-    private Double latitude;
-    private Double longitude;
     private String zipCode;
     private String mobileNumber;
+    private boolean enabled;
     private String idProofType;
-    private String idProofNumber;
-    private String experience;
+    private Long idProofNumber;
+    private int experience;
     private String specialization;
+
 }

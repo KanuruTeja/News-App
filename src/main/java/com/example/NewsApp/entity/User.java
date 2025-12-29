@@ -1,12 +1,28 @@
 package com.example.NewsApp.entity;
 
-import com.example.NewsApp.dto.AuthProvider;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
-import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDateTime;
 import java.util.List;
+
+import com.example.NewsApp.dto.AuthProvider;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "users")
@@ -44,6 +60,7 @@ public class User {
     private boolean enabled;
     @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL)
     @JsonManagedReference
+    @JsonIgnore
     private List<News> newsList;
 
     @Column(nullable = false)
@@ -52,7 +69,13 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AuthProvider authProvider; // LOCAL, GOOGLE
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private UserExperience userExperience;
 
+  
 
 
 }
+
+

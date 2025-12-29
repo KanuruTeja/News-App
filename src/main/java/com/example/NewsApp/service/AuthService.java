@@ -1,5 +1,7 @@
 package com.example.NewsApp.service;
 
+
+
 import com.example.NewsApp.dto.*;
 import com.example.NewsApp.entity.*;
 import com.example.NewsApp.exception.ApiException;
@@ -27,8 +29,10 @@ public class AuthService {
     private final PasswordEncoder encoder;
     private final EmailService emailService;
     private final JwtTokenProvider jwtProvider;
+    private final UserExperienceRepository userExperienceRepo;
 
     // ================= REGISTER =================
+    @Transactional
     public User register(RegisterRequest req) {
 
         if (userRepo.existsByEmail(req.getEmail())) {
@@ -44,21 +48,20 @@ public class AuthService {
                 .authProvider(AuthProvider.LOCAL)
                 .build();
 
-        userRepo.save(user);
+        user = userRepo.saveAndFlush(user);
 
         Role role = roleRepo.findById(req.getRoleId())
                 .orElseThrow(() ->
                         new ApiException("Invalid role", HttpStatus.BAD_REQUEST)
                 );
 
-        UserRole userRole = UserRole.builder()
-                .id(new UserRoleId(user.getId(), role.getId()))
-                .user(user)
-                .role(role)
-                .build();
-
-        userRoleRepo.save(userRole);
-
+        userRoleRepo.save(
+                UserRole.builder()
+                        .id(new UserRoleId(user.getId(), role.getId()))
+                        .user(user)
+                        .role(role)
+                        .build()
+        );
 
         locationRepo.save(
                 Location.builder()
@@ -71,11 +74,30 @@ public class AuthService {
                         .build()
         );
 
+        // ✅ SAVE EXPERIENCE ONLY IF USER PROVIDED DATA
+        if (req.getIdProofType() != null
+                || req.getIdProofNumber() != null
+                || req.getExperience() != null
+                || req.getSpecialization() != null) {
+
+            userExperienceRepo.save(
+                    UserExperience.builder()
+                            .user(user)
+                            .idProofType(req.getIdProofType())
+                            .idProofNumber(req.getIdProofNumber())
+                            .experience(req.getExperience())
+                            .specialization(req.getSpecialization())
+                            .build()
+            );
+        }
+
         return user;
     }
 
+
+
     // ================= LOGIN =================
-    public String login(LoginRequest req) {
+    public LoginResponse login(LoginRequest req) {
 
         User user = userRepo.findByEmail(req.getEmail())
                 .orElseThrow(() ->
@@ -92,10 +114,15 @@ public class AuthService {
                 )
                 .getRole();
 
-        return jwtProvider.generateToken(
+        String token =jwtProvider.generateToken(
                 user.getEmail(),
-                role.getName()
+                role.getName()	
         );
+        return new LoginResponse(
+        		user.getId(),
+        		role.getName(),
+        		token);
+        		
     }
 
     // ================= SEND OTP =================
@@ -182,16 +209,16 @@ public class AuthService {
                 );
 
         // DELETE CHILD TABLES FIRST
-        otpRepo.deleteByUser(user);        // password_reset_otp
-        locationRepo.deleteByUser(user);   // locations
-        userRoleRepo.deleteByUser(user);   // user_roles
+        otpRepo.deleteByUser(user);
+        locationRepo.deleteByUser(user);
+        userRoleRepo.deleteByUser(user);
 
-        //  THEN DELETE USER
+
         userRepo.delete(user);
     }
 
 
-    ///////////////OAuth///////////////
+//    ==================OAuth====================
     public void completeProfile(String email, CompleteProfileRequest req) {
 
         User user = userRepo.findByEmail(email)
@@ -202,7 +229,7 @@ public class AuthService {
             throw new ApiException("Profile already completed", HttpStatus.BAD_REQUEST);
         }
 
-        Role role = roleRepo.findById(req.getRoleId().intValue())
+        Role role = roleRepo.findById(3)
                 .orElseThrow(() ->
                         new ApiException("Invalid role", HttpStatus.BAD_REQUEST));
 
@@ -229,5 +256,4 @@ public class AuthService {
                         .build()
         );
     }
-
 }

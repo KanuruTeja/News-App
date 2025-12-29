@@ -13,25 +13,19 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class AdminService implements AdminServiceInterface {
 
-    private final AdminNewsRepository adminNewsRepo;
-    private final ReporterRepository reporterRepo;
     private final NewsRepository newsRepository;
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
 
     // ================= Edit news =================
 
-    @Override
     public void editAndPublish(Long newsId, AdminEditNewsRequest req) {
 
         News news = newsRepository.findById(newsId)
@@ -50,7 +44,6 @@ public class AdminService implements AdminServiceInterface {
     }
 
     // for count
-    @Override
     public void rejectNews(Long newsId, String reason) {
 
         News news = newsRepository.findById(newsId)
@@ -62,21 +55,8 @@ public class AdminService implements AdminServiceInterface {
         news.setUpdatedAt(LocalDateTime.now());
     }
 
-    public Map<String, Long> getDashboardStats() {
 
-        Map<String, Long> stats = new LinkedHashMap<>();
-
-        stats.put("Total News", newsRepository.count());
-        stats.put("Pending News", newsRepository.countByStatus(NewsStatus.PENDING));
-        stats.put("Published News", newsRepository.countByStatus(NewsStatus.PUBLISHED));
-        stats.put("Rejected News", newsRepository.countByStatus(NewsStatus.REJECTED));
-        stats.put("Reporter Management", reporterRepo.count());
-
-        return stats;
-    }
-
-    // profile uodate
-
+    // profile update
     public void updateProfile(UpdateUserProfileRequest req, String email) {
 
         User user = userRepository.findByEmail(email)
@@ -116,92 +96,4 @@ public class AdminService implements AdminServiceInterface {
         userRepository.save(user);
     }
 
-
-
-//    // ================= ARTICLES =================
-//
-//    @Override
-//    public List<AdminArticleResponse> getPendingArticles() {
-//        return adminNewsRepo.findByStatus(NewsStatus.PENDING)
-//                .stream()
-//                .map(this::mapToDto)
-//                .toList();
-//    }
-//
-//    @Override
-//    public void verifyArticle(Long articleId) {
-//        News news = getArticle(articleId);
-//        news.setStatus(NewsStatus.VERIFIED);
-//        news.setUpdatedAt(LocalDateTime.now());
-//    }
-//
-//    @Override
-//    public void rejectArticle(Long articleId, String reason) {
-//        News news = getArticle(articleId);
-//        news.setStatus(NewsStatus.REJECTED);
-//        news.setUpdatedAt(LocalDateTime.now());
-//    }
-//
-//    @Override
-//    public void publishArticle(Long articleId) {
-//        News news = getArticle(articleId);
-//        news.setStatus(NewsStatus.PUBLISHED);
-//        news.setPublishedAt(LocalDateTime.now());
-//    }
-//
-//    private News getArticle(Long id) {
-//        return adminNewsRepo.findById(id)
-//                .orElseThrow(() ->
-//                        new ApiException("Article not found", HttpStatus.NOT_FOUND)
-//                );
-//    }
-//
-//    private AdminArticleResponse mapToDto(News news) {
-//        return AdminArticleResponse.builder()
-//                .id(news.getId())
-//                .headline(news.getHeadline())
-//                .category(news.getCategory().name())
-//                .newsType(news.getNewsType().name())
-//                .reporterEmail(news.getReporter().getEmail())
-//                .submittedAt(news.getCreatedAt())
-//                .build();
-//    }
-//
-//    // ================= REPORTERS =================
-//
-//    @Override
-//    public List<PendingReporterResponse> getPendingReporters() {
-//
-//        return reporterRepo.findByStatus(ReporterStatus.PENDING)
-//                .stream()
-//                .map(r -> PendingReporterResponse.builder()
-//                        .reporterId(r.getId())
-//                        .name(r.getUser().getName())
-//                        .email(r.getUser().getEmail())
-//                        .registeredAt(r.getRegisteredAt())
-//                        .build())
-//                .toList();
-//    }
-//
-//    @Override
-//    public void approveReporter(Long reporterId) {
-//
-//        Reporter reporter = getReporter(reporterId);
-//        reporter.setStatus(ReporterStatus.APPROVED);
-//        reporter.setApprovedAt(LocalDateTime.now());
-//    }
-//
-//    @Override
-//    public void rejectReporter(Long reporterId) {
-//
-//        Reporter reporter = getReporter(reporterId);
-//        reporter.setStatus(ReporterStatus.REJECTED);
-//    }
-//
-//    private Reporter getReporter(Long id) {
-//        return reporterRepo.findById(id)
-//                .orElseThrow(() ->
-//                        new ApiException("Reporter not found", HttpStatus.NOT_FOUND)
-//                );
-//    }
 }

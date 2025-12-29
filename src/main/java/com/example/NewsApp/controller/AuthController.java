@@ -1,15 +1,32 @@
 package com.example.NewsApp.controller;
 
-import com.example.NewsApp.dto.*;
-import com.example.NewsApp.entity.User;
-import com.example.NewsApp.service.AuthService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-
 import java.security.Principal;
 import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.example.NewsApp.dto.ApiResponse;
+import com.example.NewsApp.dto.CompleteProfileRequest;
+import com.example.NewsApp.dto.ForgotPasswordRequest;
+import com.example.NewsApp.dto.LoginRequest;
+import com.example.NewsApp.dto.LoginResponse;
+import com.example.NewsApp.dto.RegisterRequest;
+import com.example.NewsApp.dto.ResetPasswordRequest;
+import com.example.NewsApp.dto.VerifyOtpRequest;
+import com.example.NewsApp.entity.User;
+import com.example.NewsApp.service.AuthService;
+import com.example.NewsApp.service.EmailService;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -17,6 +34,9 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    @Autowired
+    private EmailService emailService;
+
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<?>> register(@RequestBody RegisterRequest req) {
@@ -38,12 +58,13 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<?>> login(@RequestBody LoginRequest req) {
 
-        String token = authService.login(req);
+        LoginResponse response = authService.login(req);
 
         return ResponseEntity.ok(
-                new ApiResponse<>("Login success", token)
+                new ApiResponse<>("Login success", response)
         );
     }
+
 
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<?>> forgot(@RequestBody ForgotPasswordRequest req) {
@@ -101,7 +122,6 @@ public class AuthController {
 
 
 //    http://localhost:8080/oauth2/authorization/google
-
     @PostMapping("/complete-profile")
     public ResponseEntity<ApiResponse<Void>> completeProfile(
             @RequestBody CompleteProfileRequest request,
@@ -113,6 +133,13 @@ public class AuthController {
                 new ApiResponse<>("Profile completed successfully", null)
         );
     }
-
-
+   
+      
+        @PostMapping("/request")
+        public ResponseEntity<String> submitForm(@RequestBody RegisterRequest request) {
+            emailService.sendRegistrationMail(request);
+            return ResponseEntity.ok("Form submitted and email sent successfully");
+        }
+    
+ 
 }

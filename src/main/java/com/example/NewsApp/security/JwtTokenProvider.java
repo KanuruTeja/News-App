@@ -24,7 +24,7 @@ public class JwtTokenProvider {
 
         return Jwts.builder()
                 .setSubject(email)
-                .claim("role", role.toUpperCase()) // IMPORTANT
+                .claim("role", role.toUpperCase())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
                 .signWith(key, SignatureAlgorithm.HS256)

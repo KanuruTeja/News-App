@@ -1,7 +1,12 @@
 package com.example.NewsApp.security;
 
-import com.example.NewsApp.dto.AuthProvider;
+
+
+import com.example.NewsApp.entity.Role;
 import com.example.NewsApp.entity.User;
+import com.example.NewsApp.entity.UserRole;
+import com.example.NewsApp.entity.UserRoleId;
+import com.example.NewsApp.repository.RoleRepository;
 import com.example.NewsApp.repository.UserRepository;
 import com.example.NewsApp.repository.UserRoleRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,8 +24,11 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
     private final UserRoleRepository userRoleRepository;
     private final JwtTokenProvider jwtTokenProvider;
+
+    private static final int USER_ROLE_ID = 3;
 
     @Override
     public void onAuthenticationSuccess(
@@ -34,29 +42,35 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         String email = oauthUser.getAttribute("email");
         String name = oauthUser.getAttribute("name");
 
-        // ✅ FIND OR CREATE USER
+        //  Save / fetch user
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> userRepository.save(
                         User.builder()
                                 .email(email)
                                 .name(name)
                                 .enabled(true)
-                                .authProvider(AuthProvider.GOOGLE) // ✅ FIXED
-                                .profileCompleted(false)
+//                                .authProvider("GOOGLE")
+                                .profileCompleted(true)
                                 .build()
                 ));
 
-        // ✅ DEFAULT ROLE FOR INCOMPLETE PROFILE
-        String role = "INCOMPLETE";
+        // Assign USER role if not already present
+        userRoleRepository.findByUserId(user.getId())
+                .orElseGet(() -> {
+                    Role role = roleRepository.findById(USER_ROLE_ID)
+                            .orElseThrow();
 
-        // ✅ IF PROFILE IS COMPLETE → FETCH ACTUAL ROLE
-        if (user.isProfileCompleted()) {
-            role = userRoleRepository.findByUser(user)
-                    .map(ur -> ur.getRole().getName().toUpperCase())
-                    .orElse("INCOMPLETE");
-        }
+                    return userRoleRepository.save(
+                            UserRole.builder()
+                                    .id(new UserRoleId(user.getId(), role.getId()))
+                                    .user(user)
+                                    .role(role)
+                                    .build()
+                    );
+                });
 
-        String token = jwtTokenProvider.generateToken(email, role);
+        // 3️⃣ Generate JWT with USER role
+        String token = jwtTokenProvider.generateToken(email, "USER");
 
         response.setContentType("application/json");
         response.getWriter().write("""
@@ -65,10 +79,10 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
               "error": false,
               "data": {
                 "token": "%s",
-                "profileCompleted": %b,
-                "role": "%s"
+                "profileCompleted": true,
+                "role": "USER"
               }
             }
-        """.formatted(token, user.isProfileCompleted(), role));
+        """.formatted(token));
     }
 }
